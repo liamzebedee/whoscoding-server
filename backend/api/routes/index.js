@@ -1,86 +1,88 @@
 var express = require('express');
+var session = require("express-session");
 var bodyParser = require("body-parser");
-var router = express.Router();
+var app = express.Router();
 var r = require('rethinkdb');
+var passport = require('passport');
+var GitHubStrategy = require('passport-github').Strategy;
 
-const BOXES = 'boxes';
-const TEMP = 'temperatureReadings';
-const HUMIDITY = 'humidityReadings';
-const CROPIMG = 'cropImagery';
+// Realtime libs.
+var http = require('http').Server(app);
+var io = require('socket.io')(http);
 
-router.use(bodyParser.urlencoded({ extended: false }));
-router.use(bodyParser.json());
+const GITHUB_CLIENT_ID = "ec26c060f860584dd8bf";
+const GITHUB_CLIENT_SECRET = "ee8931e48f4e4906f9dcef55859aa347abad96ce"
 
-router.get('/', (req, res) => {
-  res.status(200).send("Mushbox 2018.")
-})
-
-router.post('/box/', (req, res) => {
-  let name = req.body.name;
-  if(!name) throw new Error("missing name");
-
-  let box = {
-    name,
-  }
-
-  r.table(BOXES).insert(box, {}).run(req._rdbConn, function(error, result) {
-    if (error) {
-      handleError(res, error)
-    } else if (result.inserted !== 1) {
-      handleError(res, new Error("Document was not inserted."))
-    } else {
-      res.status(200).send(result);
-    }
-  });
-})
-
-router.get('/box/:id', function(req, res) {
-  r.table(BOXES).get(req.params.id)
-  .run(req._rdbConn, function(err, result) {
-    if(err) throw err;
-    res.status(200).send(result);
-  });
-});
-
-router.post('/box/:id/temperature', function(req, res) {
-  let temperatureVal = req.body.temperature;
-  let timeVal = req.body.time;
-  if(!temperatureVal) throw new Error("temperature is null")
-  if(!timeVal) throw new Error("time is null")
-
-  let temp = {
-    boxId: req.params.id,
-    reading: temperatureVal,
-    time: timeVal
-  }
-  r.table(TEMP).insert(temp, {})
-  .run(req._rdbConn, function(err, result) {
-    if(err) throw err;
-    res.status(200).send(result);
-  });
-});
-
-router.get('/box/:id/temperature', function(req, res) {
-  r.table(TEMP).filter({ "boxId": req.params.id })
-  .run(req._rdbConn, function(err, cursor) {
-    if(err) throw err;
-    cursor.toArray(function(error, result) {
-      if (error) {
-        handleError(res, error)
-      } else {
-        // Send back the data
-        res.status(200).send(result);
+passport.use(new GitHubStrategy({
+    clientID: GITHUB_CLIENT_ID,
+    clientSecret: GITHUB_CLIENT_SECRET,
+    callbackURL: "http://localhost:3000/auth/github/callback",
+    passReqToCallback: true,
+    // callbackURL: "https://hackfeed.liamz.co/auth/github/callback"
+  },
+  function(req, accessToken, refreshToken, profile, cb) {
+    let user = {
+      id: profile.id,
+      profile,
+      githubAuth: {
+        accessToken,
+        // refreshToken,
       }
-    });
-  });
+    };
+
+    r.table('users')
+    .insert(user, { conflict: "update" })
+    .run(req._rdbConn, null, (err, res) => {
+      return cb(err, user);
+    })
+  }
+));
+
+passport.serializeUser(function(req, user, done) {
+  console.log(user)
+  done(null, user.id);
+});
+
+passport.deserializeUser(function(req, id, done) {
+  console.log(id)
+  r.table('users')
+  .get(id)
+  .run(req._rdbConn, null, (err, res) => {
+    console.log(res)
+    return done(err, res);
+  })
 });
 
 
+app.use(session({
+  secret: 'keyboard cat',
+}));
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
+app.use(passport.initialize());
+app.use(passport.session());
 
-function handleError(res, error) {
-  return res.status(500).send({
-    error: error.message
-  });
-}
 
-module.exports = router;
+
+app.get('/', (req, res) => {
+  res.status(200).send("Lately - 2012 Mix/Master.")
+})
+
+app.get('/user', (req, res) => {
+  res.send(req.user)
+})
+
+app.get('/auth/github',
+  passport.authenticate('github'));
+
+app.get('/auth/github/callback', 
+  passport.authenticate('github', { failureRedirect: '/login' }),
+  function(req, res) {
+    // res.redirect('/');
+    // res.send(req.user)
+    res.send("<script>window.close()</script>")
+  }
+);
+
+
+module.exports = app;
