@@ -12,6 +12,7 @@ var r = require('rethinkdb');
 var async = require('async');
 var config = require('../core/db/config');
 
+
 /**
  * Get port from environment and store in Express.
  */
@@ -30,10 +31,58 @@ var server = http.createServer(app);
  */
 
 function startExpress() {
+  startRealtime(server)
+
   server.listen(port);
   server.on('error', onError);
   server.on('listening', onListening);
+}
 
+function startRealtime(server) {
+    // Realtime libs.
+  var ioPassport = require('socket.io-passport');
+  var bundle = require('socket.io-bundle');
+  var io = require('socket.io')(server);
+  io.use(bundle.cookieParser());
+  io.use(bundle.session({secret: process.env.SECRET_KEY}));
+  io.use(ioPassport.initialize());
+  io.use(ioPassport.session());
+
+  io.on('connection', function(socket) {
+    io.emit('online', { id: socket.request.user });
+
+    socket.on('newPost', () => {
+      r.table("posts")
+      .insert({
+        userId: req.user.id,
+        stuff: req.stuff || "",
+        time: new Date
+      })
+      .run(req._rdbConn, (err, res) => {
+        res.send(res)
+      })
+    })
+
+    socket.on('disconnect', function() {
+      io.emit('offline', { id: socket.request.user });
+    });
+  });
+
+  r.connect(config.rethinkdb, function(error, conn) {
+    if (error) {
+      throw new Error(error)
+    } else {
+      
+      r.table('posts').changes().run(conn, function(err, cursor) {
+        cursor.each((err, row) => {
+          if(row.new_val) {
+            io.emit('post', { ... row.new_val });
+          }
+        })
+      })
+
+    }
+  });
 }
 
 /*

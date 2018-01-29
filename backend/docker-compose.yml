@@ -17,4 +17,6 @@ webapi:
   command: npm start
   links:
     - db
+  environment:
+    SECRET_KEY: "FOOBAR123"
 

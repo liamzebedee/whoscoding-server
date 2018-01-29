@@ -1,14 +1,17 @@
 var express = require('express');
 var session = require("express-session");
 var bodyParser = require("body-parser");
-var app = express.Router();
+var router = express.Router();
 var r = require('rethinkdb');
 var passport = require('passport');
 var GitHubStrategy = require('passport-github').Strategy;
+var LocalStrategy = require('passport-local').Strategy;
+// var thinky = require('thinky')();
+// var type   = thinky.type;
+var crypto = require('crypto');
 
-// Realtime libs.
-var http = require('http').Server(app);
-var io = require('socket.io')(http);
+
+
 
 const GITHUB_CLIENT_ID = "ec26c060f860584dd8bf";
 const GITHUB_CLIENT_SECRET = "ee8931e48f4e4906f9dcef55859aa347abad96ce"
@@ -27,62 +30,120 @@ passport.use(new GitHubStrategy({
       githubAuth: {
         accessToken,
         // refreshToken,
-      }
+      },
+      clientPassword: crypto.randomBytes(128).toString('hex')
     };
 
     r.table('users')
     .insert(user, { conflict: "update" })
-    .run(req._rdbConn, null, (err, res) => {
+    .run(req._rdbConn, (err, res) => {
       return cb(err, user);
     })
   }
 ));
 
+passport.use(new LocalStrategy(
+  { passReqToCallback: true },
+  function(req, userId, password, done) {
+    r.table('users')
+    .get(userId)
+    .run(req._rdbConn, null, (err, user) => {
+      if (err) { return done(err); }
+      
+      if (!user) {
+        return done(null, false, { message: 'Incorrect username.' });
+      }
+      
+      if (user.clientPassword != password) {
+        return done(null, false, { message: 'Incorrect password.' });
+      }
+
+      return done(null, user);
+    })
+  }
+));
+
 passport.serializeUser(function(req, user, done) {
-  console.log(user)
   done(null, user.id);
 });
 
 passport.deserializeUser(function(req, id, done) {
-  console.log(id)
   r.table('users')
   .get(id)
   .run(req._rdbConn, null, (err, res) => {
-    console.log(res)
     return done(err, res);
   })
 });
 
 
-app.use(session({
-  secret: 'keyboard cat',
+router.use(session({
+  secret: process.env.SECRET_KEY,
 }));
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
-app.use(passport.initialize());
-app.use(passport.session());
+router.use(bodyParser.urlencoded({ extended: false }));
+router.use(bodyParser.json());
+router.use(passport.initialize());
+router.use(passport.session());
 
 
 
-app.get('/', (req, res) => {
+router.get('/', (req, res) => {
   res.status(200).send("Lately - 2012 Mix/Master.")
 })
 
-app.get('/user', (req, res) => {
+router.get('/user', (req, res) => {
   res.send(req.user)
 })
 
-app.get('/auth/github',
-  passport.authenticate('github'));
 
-app.get('/auth/github/callback', 
-  passport.authenticate('github', { failureRedirect: '/login' }),
+router.get('/auth/github', passport.authenticate('github'));
+
+router.post('/auth/login', passport.authenticate('local'), (req, res) => {
+  res.send(200)
+});
+
+
+
+router.get('/auth/github/callback', 
+  passport.authenticate('github', { failureRedirect: '/' }),
   function(req, res) {
-    // res.redirect('/');
-    // res.send(req.user)
     res.send("<script>window.close()</script>")
   }
 );
 
+router.post('/activity', (req, res) => {
+  r.table("posts")
+  .insert({
+    userId: req.user.id,
+    stuff: req.body.stuff,
+    time: new Date
+  })
+  .run(req._rdbConn, (err, res) => {
+    if(err) throw new Error(err)
+  })
+})
 
-module.exports = app;
+router.delete('/activity/{id}', (req, res) => {
+  r.table("posts")
+  .delete(req.params.id)
+  .run(req._rdbConn, (err, res) => {
+    if(err) throw new Error(err)
+  })
+})
+
+router.get('/activity', (req, res) => {
+  r.table("posts").outerJoin(
+    r.table("users"),
+    function (post, user) {
+      return post("userId").eq(user("id"));
+  }).zip()
+  .run(req._rdbConn, (err, cursor) => {
+    if(err) throw new Error(err)
+
+    cursor.toArray().then((posts) => {
+      res.send(posts)
+    })
+  })
+})
+
+
+module.exports = router;
