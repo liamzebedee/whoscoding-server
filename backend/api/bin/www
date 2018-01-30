@@ -40,32 +40,74 @@ function startExpress() {
 
 function startRealtime(server) {
     // Realtime libs.
-  var ioPassport = require('socket.io-passport');
+  var ioPassport = require('socket.io-passport');   
   var bundle = require('socket.io-bundle');
   var io = require('socket.io')(server);
   io.use(bundle.cookieParser());
   io.use(bundle.session({secret: process.env.SECRET_KEY}));
   io.use(ioPassport.initialize());
-  io.use(ioPassport.session());
+  io.use(ioPassport.session()); 
 
   io.on('connection', function(socket) {
-    io.emit('online', { id: socket.request.user });
-
-    socket.on('newPost', () => {
-      r.table("posts")
-      .insert({
-        userId: req.user.id,
-        stuff: req.stuff || "",
-        time: new Date
-      })
-      .run(req._rdbConn, (err, res) => {
-        res.send(res)
-      })
-    })
-
+    // io.emit('online', { id: socket.request.user });
     socket.on('disconnect', function() {
-      io.emit('offline', { id: socket.request.user });
-    });
+      // io.emit('not hacking', { id: socket.request.id, username: socket.request.username });
+      // io.emit('offline', { id: socket.request.user });
+    })
+    
+    // socket.on('newPost', () => {
+    //   r.table("posts")
+    //   .insert({
+    //     userId: req.user.id,
+    //     stuff: req.stuff || "",
+    //     time: new Date
+    //   })
+    //   .run(req._rdbConn, (err, res) => {
+    //     res.send(res)
+    //   })
+    // })
+
+    // r.table('activity')
+    // .changes().run(socket.request._rdbConn, function(err, cursor) {
+    //   cursor.each(change => {
+    //     if(change.new_val) {
+    //       io.emit('activity', change.new_val);
+    //     }
+    //   });
+    // })
+
+    // socket.on('get current activity', () => {
+    //   // r.table('activity') 
+    //   // .orderBy({index: 'time'})
+    //   // .filter
+    // })
+
+  //   socket.on('hacking', function() {
+  //     r.table("activity")
+  //     .insert({
+  //       hacking: true,
+  //       time: new Date,
+  //     })
+  //     .run(socket.req._rdbConn, (err, res) => {
+  //       if(err) throw new Error(err)
+  //     })
+
+  //     // io.emit('hacking', { id: req.user.id, username: req.user.username });
+  //   });
+
+  //   socket.on('not hacking', function() {
+  //     r.table("activity")
+  //     .insert({
+  //       hacking: false,
+  //       time: new Date,
+  //     })
+  //     .run(req._rdbConn, (err, res) => {
+  //       if(err) throw new Error(err)
+  //     })
+
+  //     // io.emit('not hacking', { id: req.user.id, username: req.user.username });
+  //   });
+
   });
 
   r.connect(config.rethinkdb, function(error, conn) {

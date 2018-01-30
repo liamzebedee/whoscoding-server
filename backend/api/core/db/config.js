@@ -5,7 +5,7 @@ module.exports = {
     port: 28015,
     authKey: '',
     db: 'nerd',
-    tables: ['users', 'posts']
+    tables: ['users', 'posts', 'activity']
   },
   express: {
      port: 3000

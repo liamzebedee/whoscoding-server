@@ -1,6 +1,0 @@
-{
-  "dependencies": {
-    "socket.io-bundle": "^0.1.2",
-    "socket.io-passport": "^0.1.1"
-  }
-}
