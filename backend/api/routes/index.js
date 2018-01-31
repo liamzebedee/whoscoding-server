@@ -1,13 +1,12 @@
 var express = require('express');
-var session = require("express-session");
+var rdbStore = require('../session')
+var session = require('express-session');
 var bodyParser = require("body-parser");
 var router = express.Router();
 var r = require('rethinkdb');
 var passport = require('passport');
 var GitHubStrategy = require('passport-github').Strategy;
 var LocalStrategy = require('passport-local').Strategy;
-// var thinky = require('thinky')();
-// var type   = thinky.type;
 var crypto = require('crypto');
 
 
@@ -71,13 +70,18 @@ passport.deserializeUser(function(req, id, done) {
   r.table('users')
   .get(id)
   .run(req._rdbConn, null, (err, res) => {
-    return done(err, res);
+    return done(err, {
+      profile: res.profile,
+      id: res.id,
+      clientPassword: res.clientPassword,
+    });
   })
 });
 
 
 router.use(session({
   secret: process.env.SECRET_KEY,
+  store: rdbStore,
 }));
 router.use(bodyParser.urlencoded({ extended: false }));
 router.use(bodyParser.json());

@@ -12,6 +12,10 @@ var r = require('rethinkdb');
 var async = require('async');
 var config = require('../core/db/config');
 
+var createConnPromise = require('../core/db/connection').createConnPromise;
+
+
+
 
 /**
  * Get port from environment and store in Express.
@@ -32,40 +36,52 @@ var server = http.createServer(app);
 
 function startExpress() {
   startRealtime(server)
-
-  server.listen(port);
+  server.listen(port, '0.0.0.0');
   server.on('error', onError);
   server.on('listening', onListening);
 }
 
 function startRealtime(server) {
-    // Realtime libs.
-  var ioPassport = require('socket.io-passport');   
-  var bundle = require('socket.io-bundle');
+  // Realtime libs.
   var io = require('socket.io')(server);
-  io.use(bundle.cookieParser());
-  io.use(bundle.session({secret: process.env.SECRET_KEY}));
-  io.use(ioPassport.initialize());
-  io.use(ioPassport.session()); 
+
+  io.use((socket, next) => {
+    let auth = {
+      ...socket.handshake.query
+    };
+
+    createConnPromise()
+    .then(conn => {
+      r.table('users')
+      .get(auth.id)
+      .run(conn, (err, res) => {
+        if(err) return next(new Error('Database error in authenticating user'));
+
+        if(res.clientPassword === auth.clientPassword) {
+          socket.request.user = res;
+          next(null);
+        } else {
+          next(new Error('User is not authenticated'));
+        }
+      })
+    })
+  })
 
   io.on('connection', function(socket) {
+    // createConnPromise()
+    // .then(conn => {
+    //   r.table('users')
+    //   .update({
+    //     id: socket.request.user.id,
+    //     online: true
+    //   })
+    // })
+
     // io.emit('online', { id: socket.request.user });
     socket.on('disconnect', function() {
       // io.emit('not hacking', { id: socket.request.id, username: socket.request.username });
       // io.emit('offline', { id: socket.request.user });
     })
-    
-    // socket.on('newPost', () => {
-    //   r.table("posts")
-    //   .insert({
-    //     userId: req.user.id,
-    //     stuff: req.stuff || "",
-    //     time: new Date
-    //   })
-    //   .run(req._rdbConn, (err, res) => {
-    //     res.send(res)
-    //   })
-    // })
 
     // r.table('activity')
     // .changes().run(socket.request._rdbConn, function(err, cursor) {
@@ -110,21 +126,12 @@ function startRealtime(server) {
 
   });
 
-  r.connect(config.rethinkdb, function(error, conn) {
-    if (error) {
-      throw new Error(error)
-    } else {
-      
-      r.table('posts').changes().run(conn, function(err, cursor) {
-        cursor.each((err, row) => {
-          if(row.new_val) {
-            io.emit('post', { ... row.new_val });
-          }
-        })
-      })
-
-    }
-  });
+  // r.connect(config.rethinkdb, function(error, conn) {
+  //   if (error) {
+  //     throw new Error(error)
+  //   } else {
+  //   }
+  // });
 }
 
 /*
@@ -272,5 +279,5 @@ function onListening() {
   var bind = typeof addr === 'string'
     ? 'pipe ' + addr
     : 'port ' + addr.port;
-  debug('Listening on ' + bind);
+  console.log('Listening on ' + server.address().address);
 }

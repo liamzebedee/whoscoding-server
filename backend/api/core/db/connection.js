@@ -14,8 +14,15 @@ function createConnection(req, res, next) {
   });
 }
 
+function createConnPromise() {
+  return r.connect(config.rethinkdb)
+}
+
 function handleError(res, error) {
     return res.status(500).send({'error': error.message});
 }
 
-module.exports = createConnection;
+module.exports = {
+  createConnection,
+  createConnPromise
+}
