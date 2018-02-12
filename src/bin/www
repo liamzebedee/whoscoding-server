@@ -14,6 +14,14 @@ var r = require('rethinkdb');
 var async = require('async');
 var config = require('../core/db/config');
 
+// https://stackoverflow.com/questions/38223053/ensuring-server-app-runs-before-mocha-tests-start
+var readyCb;
+module.exports = {
+  init: function(cb) {
+    readyCb = cb 
+  }
+}
+
 /**
  * Get port from environment and store in Express.
  */
@@ -33,7 +41,7 @@ var server = http.createServer(app);
 
 function startExpress() {
   listenSocketIo(server)
-  server.listen(port, '0.0.0.0');
+  server.listen(port, '0.0.0.0', readyCb);
   server.on('error', onError);
   server.on('listening', onListening);
 }

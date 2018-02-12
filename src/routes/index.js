@@ -6,7 +6,11 @@ var r = require('rethinkdb');
 
 // Auth
 var passport = require('passport');
-var GitHubStrategy = require('passport-github').Strategy;
+var MainAuthStrategy = require('passport-github').Strategy;
+if(process.env.NODE_ENV === 'test') {
+  MainAuthStrategy = require('passport-mocked').Strategy;
+}
+
 var LocalStrategy = require('passport-local').Strategy;
 var crypto = require('crypto');
 
@@ -18,7 +22,7 @@ if(process.env.NODE_ENV === 'production') {
   GITHUB_CALLBACK_URL = "https://hackfeed.liamz.co/auth/github/callback";
 }
 
-passport.use(new GitHubStrategy({
+passport.use(new MainAuthStrategy({
     clientID: GITHUB_CLIENT_ID,
     clientSecret: GITHUB_CLIENT_SECRET,
     callbackURL: GITHUB_CALLBACK_URL,
@@ -41,7 +45,7 @@ passport.use(new GitHubStrategy({
       return cb(err, user);
     })
   }
-));    
+));
 
 passport.use(new LocalStrategy(
   { passReqToCallback: true },
@@ -99,14 +103,19 @@ router.get('/user', (req, res) => {
   res.send(req.user)
 })
 
-router.get('/auth/github', passport.authenticate('github'));
+const PASSPORT_STRATEGY_PROVIDER = 'mocked';
+if(process.env.NODE_ENV === 'production') {
+  PASSPORT_STRATEGY_PROVIDER = 'github';
+}
+
+router.get('/auth/github', passport.authenticate(PASSPORT_STRATEGY_PROVIDER));
 
 router.post('/auth/login', passport.authenticate('local'), (req, res) => {
   res.send(200)
 });
 
 router.get('/auth/github/callback', 
-  passport.authenticate('github', { failureRedirect: '/' }),
+  passport.authenticate(PASSPORT_STRATEGY_PROVIDER, { failureRedirect: '/' }),
   function(req, res) {
     res.send("<script>window.close()</script>")
   }
