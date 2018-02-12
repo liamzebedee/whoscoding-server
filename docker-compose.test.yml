@@ -1,22 +1,27 @@
-db:
-  image: rethinkdb
-  ports:
-    - "8080:8080"
-    - "28015:28015"
-    - "29015:29015"
-  volumes:
-    - ./data:/data
+version: '2'
 
-webapi:
-  image: mhart/alpine-node:9
-  ports:
-    - "3000:3000"
-  volumes:
-    - ./src:/src
-  working_dir: /src
-  command: npm test
-  links:
-    - db
-  environment:
-    SECRET_KEY: "xxx"
-    NODE_ENV: "test"
+services:
+  db:
+    image: rethinkdb
+    ports:
+      - "8080:8080"
+      - "28015:28015"
+      - "29015:29015"
+    tmpfs:
+      - /data
+    ports:
+     - 8080:8080
+
+  webapi:
+    image: mhart/alpine-node:9
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./src:/src
+    working_dir: /src
+    command: npm test
+    links:
+      - db
+    environment:
+      SECRET_KEY: "xxx"
+      NODE_ENV: "test"

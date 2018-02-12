@@ -29,6 +29,8 @@ passport.use(new MainAuthStrategy({
     passReqToCallback: true,
   },
   function(req, accessToken, refreshToken, profile, cb) {
+    if(!profile.id) return cb(new Error("no id found from OAuth handshake. can't setup user"), null)
+    
     let user = {
       id: profile.id,
       profile,
@@ -36,7 +38,9 @@ passport.use(new MainAuthStrategy({
         accessToken,
         // refreshToken,
       },
-      clientPassword: crypto.randomBytes(128).toString('hex')
+      clientPassword: crypto.randomBytes(128).toString('hex'),
+      
+      statuses: [],
     };
 
     r.table('users')
@@ -103,8 +107,9 @@ router.get('/user', (req, res) => {
   res.send(req.user)
 })
 
-const PASSPORT_STRATEGY_PROVIDER = 'mocked';
-if(process.env.NODE_ENV === 'production') {
+var PASSPORT_STRATEGY_PROVIDER = 'mocked';
+// if(process.env.NODE_ENV === 'production') {
+if(process.env.NODE_ENV != 'test') {
   PASSPORT_STRATEGY_PROVIDER = 'github';
 }
 
