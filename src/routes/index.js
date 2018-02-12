@@ -1,26 +1,28 @@
 var express = require('express');
-var rdbStore = require('../session')
 var session = require('express-session');
 var bodyParser = require("body-parser");
 var router = express.Router();
 var r = require('rethinkdb');
+
+// Auth
 var passport = require('passport');
 var GitHubStrategy = require('passport-github').Strategy;
 var LocalStrategy = require('passport-local').Strategy;
 var crypto = require('crypto');
 
 
-
-
 const GITHUB_CLIENT_ID = "ec26c060f860584dd8bf";
-const GITHUB_CLIENT_SECRET = "ee8931e48f4e4906f9dcef55859aa347abad96ce"
+const GITHUB_CLIENT_SECRET = "ee8931e48f4e4906f9dcef55859aa347abad96ce";
+var GITHUB_CALLBACK_URL = "http://0.0.0.0:3000/auth/github/callback";
+if(process.env.NODE_ENV === 'production') {
+  GITHUB_CALLBACK_URL = "https://hackfeed.liamz.co/auth/github/callback";
+}
 
 passport.use(new GitHubStrategy({
     clientID: GITHUB_CLIENT_ID,
     clientSecret: GITHUB_CLIENT_SECRET,
-    callbackURL: "http://localhost:3000/auth/github/callback",
+    callbackURL: GITHUB_CALLBACK_URL,
     passReqToCallback: true,
-    // callbackURL: "https://hackfeed.liamz.co/auth/github/callback"
   },
   function(req, accessToken, refreshToken, profile, cb) {
     let user = {
@@ -39,7 +41,7 @@ passport.use(new GitHubStrategy({
       return cb(err, user);
     })
   }
-));
+));    
 
 passport.use(new LocalStrategy(
   { passReqToCallback: true },
@@ -81,7 +83,6 @@ passport.deserializeUser(function(req, id, done) {
 
 router.use(session({
   secret: process.env.SECRET_KEY,
-  store: rdbStore,
 }));
 router.use(bodyParser.urlencoded({ extended: false }));
 router.use(bodyParser.json());
@@ -98,14 +99,11 @@ router.get('/user', (req, res) => {
   res.send(req.user)
 })
 
-
 router.get('/auth/github', passport.authenticate('github'));
 
 router.post('/auth/login', passport.authenticate('local'), (req, res) => {
   res.send(200)
 });
-
-
 
 router.get('/auth/github/callback', 
   passport.authenticate('github', { failureRedirect: '/' }),
@@ -113,41 +111,5 @@ router.get('/auth/github/callback',
     res.send("<script>window.close()</script>")
   }
 );
-
-router.post('/activity', (req, res) => {
-  r.table("posts")
-  .insert({
-    userId: req.user.id,
-    stuff: req.body.stuff,
-    time: new Date
-  })
-  .run(req._rdbConn, (err, res) => {
-    if(err) throw new Error(err)
-  })
-})
-
-router.delete('/activity/{id}', (req, res) => {
-  r.table("posts")
-  .delete(req.params.id)
-  .run(req._rdbConn, (err, res) => {
-    if(err) throw new Error(err)
-  })
-})
-
-router.get('/activity', (req, res) => {
-  r.table("posts").outerJoin(
-    r.table("users"),
-    function (post, user) {
-      return post("userId").eq(user("id"));
-  }).zip()
-  .run(req._rdbConn, (err, cursor) => {
-    if(err) throw new Error(err)
-
-    cursor.toArray().then((posts) => {
-      res.send(posts)
-    })
-  })
-})
-
 
 module.exports = router;

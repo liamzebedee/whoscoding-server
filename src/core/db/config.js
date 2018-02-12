@@ -1,10 +1,9 @@
 module.exports = {
   rethinkdb: {
-    // host: 'app-db',
     host: 'db',
     port: 28015,
     authKey: '',
-    db: 'nerd',
+    db: `app_${process.env.NODE_ENV}`,
     tables: ['users', 'activity', 'sessions']
   },
   express: {
