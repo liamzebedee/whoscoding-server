@@ -1,4 +1,5 @@
-version: '2'
+version: "3.2"
+
 
 services:
   wh_db:
@@ -10,13 +11,20 @@ services:
       - data:/data
 
   wh_api:
-    image: mhart/alpine-node:9
+    # image: mhart/alpine-node:9
+    build: .
     ports:
       - "80:3000"
-    volumes:
-      - src:/src
-    working_dir: /src
-    command: npm start
+    # volumes:
+      # - ./src:/src
+    # volumes:
+    #   - type: "local"
+    #     source: ./src
+    #     target: "/src"
+    
+    # working_dir: /src
+
+    # command: sh
     links:
       - wh_db
     environment:
@@ -24,7 +32,5 @@ services:
       NODE_ENV: "production"
 
 volumes:
-  src:
-    driver: local
   data:
     driver: local
