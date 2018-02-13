@@ -1,7 +1,7 @@
 version: '2'
 
 services:
-  db:
+  wh_db:
     image: rethinkdb
     ports:
       - "8080:8080"
@@ -12,7 +12,7 @@ services:
     ports:
      - 8080:8080
 
-  webapi:
+  wh_api:
     image: mhart/alpine-node:9
     ports:
       - "3000:3000"
@@ -21,7 +21,7 @@ services:
     working_dir: /src
     command: npm test
     links:
-      - db
+      - wh_db
     environment:
       SECRET_KEY: "xxx"
       NODE_ENV: "test"

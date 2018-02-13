@@ -1,4 +1,4 @@
-db:
+wh_db:
   image: rethinkdb
   ports:
     - "8080:8080"
@@ -7,7 +7,7 @@ db:
   volumes:
     - ./data:/data
 
-webapi:
+wh_api:
   image: mhart/alpine-node:9
   ports:
     - "3000:3000"
@@ -16,7 +16,7 @@ webapi:
   working_dir: /src
   command: npm start
   links:
-    - db
+    - wh_db
   environment:
     SECRET_KEY: "FOOBAR123"
     NODE_ENV: "development"

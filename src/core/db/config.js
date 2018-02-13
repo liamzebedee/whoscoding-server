@@ -1,6 +1,6 @@
 module.exports = {
   rethinkdb: {
-    host: 'db',
+    host: 'wh_db',
     port: 28015,
     authKey: '',
     db: `app_${process.env.NODE_ENV}`,
