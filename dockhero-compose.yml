@@ -1,22 +1,30 @@
-wh_db:
-  image: rethinkdb
-  ports:
-    - "28015:28015"
-    - "29015:29015"
-  volumes:
-    - ./data:/data
+version: '2'
 
-wh_api:
-  image: mhart/alpine-node:9
-  ports:
-    - "80:3000"
-  volumes:
-    - ./src:/src
-  working_dir: /src
-  command: npm start
-  links:
-    - wh_db
-  environment:
-    SECRET_KEY: "867r5dfytugihojig7f89678uyhj"
-    NODE_ENV: "production"
+services:
+  wh_db:
+    image: rethinkdb
+    ports:
+      - "28015:28015"
+      - "29015:29015"
+    volumes:
+      - data:/data
 
+  wh_api:
+    image: mhart/alpine-node:9
+    ports:
+      - "80:3000"
+    volumes:
+      - src:/src
+    working_dir: /src
+    command: npm start
+    links:
+      - wh_db
+    environment:
+      SECRET_KEY: "867r5dfytugihojig7f89678uyhj"
+      NODE_ENV: "production"
+
+volumes:
+  src:
+    driver: local
+  data:
+    driver: local
