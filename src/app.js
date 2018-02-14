@@ -5,18 +5,23 @@ var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 var connection = require('./core/db/connection').createConnection;
 var routes = require('./routes/index');
+var cacheControl = require('express-cache-controller')
 
 var app = express();
 
 
 
-app.use(connection);
 
+app.use(connection);
 app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// app.use(cacheControl({
+  // noCache: true
+// }));
 
 // WWW
 app.use('/', routes);

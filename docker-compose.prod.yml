@@ -8,29 +8,20 @@ services:
       - "28015:28015"
       - "29015:29015"
     volumes:
-      - data:/data
+      - .data:/data
 
   wh_api:
-    # image: mhart/alpine-node:9
-    build: .
+    image: mhart/alpine-node:9
+    command: npm start
     ports:
-      - "80:3000"
-    # volumes:
-      # - ./src:/src
-    # volumes:
-    #   - type: "local"
-    #     source: ./src
-    #     target: "/src"
-    
-    # working_dir: /src
+      - "80:80"
+    volumes:
+      - ./src:/src    
+    working_dir: /src
 
-    # command: sh
     links:
       - wh_db
     environment:
       SECRET_KEY: "867r5dfytugihojig7f89678uyhj"
       NODE_ENV: "production"
-
-volumes:
-  data:
-    driver: local
+      PORT: 80

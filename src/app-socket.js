@@ -88,6 +88,7 @@ module.exports = function(server) {
       createConnPromise()
       .then(conn => {
         r.table('users')
+        .without(PRIVATE_FIELDS)
         .changes()
         .run(conn, (err, cursor) => {
           cursor.each((err, change) => {

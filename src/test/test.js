@@ -82,15 +82,19 @@ it('should register a 3rd user', (done) => {
 })
 
 
-function connectToSocket(userIdx) {
+function connectToSocket(userIdx, done) {
     let user = users[userIdx];
     let URL = `${HOST}?id=${user.id}&clientPassword=${user.clientPassword}`;
     let sock = io.connect(URL, { 
-        transports: ['websocket'],
+        // transports: ['websocket'],
         forceNew: true,
     });
+    sock.on('connect', () => {
+        done()
+    })
     sock.on('error', function(err) {
         console.error(err)
+        done()
     })
     return sock
 }
@@ -98,36 +102,34 @@ function connectToSocket(userIdx) {
 var socket0, socket1, socket2;
 
 it('should connect to socketio', (done) => {
-    socket0 = connectToSocket(0)
-
-    socket0.on('connect', () => {
-        done()
-    })
+    socket0 = connectToSocket(0, done)
 })
 
 it('should connect to socketio with second user', (done) => {
-    socket1 = connectToSocket(1)
-
-    socket1.on('connect', () => {
-        done()
-    })
+    socket1 = connectToSocket(1, done)
 })
 
 it('should update status for user 1 and distribute to user 2', (done) => {
-    socket0.emit('current status', {
-        currentProjects: [
-            {
-                name: 'swag',
-                url: 'https://liamz.co',
-                lastUpdate: new Date
-            }
-        ]
-    })
+    let currentProjects = [
+        {
+            name: 'swag',
+            url: 'https://liamz.co',
+            lastUpdate: new Date
+        }
+    ];
 
     socket1.on('status updated', msg => {
         expect(msg).to.not.be.empty;
+        console.log(msg)
+        // expect(msg.user.id).to.equal(users[0].id)
+        // expect(msg.currentStatus.currentProjects).to.equal(currentProjects)
+
         socket1.off('status updated')
         done()
+    })
+
+    socket0.emit('current status', {
+        currentProjects: currentProjects
     })
 })
 
@@ -143,9 +145,6 @@ it('should correctly return the latest status of each user', function(done) {
             }
         ]
     };
-    socket0.emit('current status', latestStatus)
-
-    this.timeout(1000)
     
     socket1.on('user statuses', msg => {
         let user = msg.users.filter(user => user.id == users[0].id)[0];
@@ -157,6 +156,7 @@ it('should correctly return the latest status of each user', function(done) {
         socket1.off('statuses')
         done()
     })
-    
+
+    socket0.emit('current status', latestStatus)
     socket1.emit('get statuses')
 })

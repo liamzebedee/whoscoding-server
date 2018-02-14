@@ -4,6 +4,8 @@ var bodyParser = require("body-parser");
 var router = express.Router();
 var r = require('rethinkdb');
 
+console.log(process.env.NODE_ENV)
+
 // Auth
 var passport = require('passport');
 var MainAuthStrategy = require('passport-github').Strategy;
@@ -15,11 +17,14 @@ var LocalStrategy = require('passport-local').Strategy;
 var crypto = require('crypto');
 
 
-const GITHUB_CLIENT_ID = "ec26c060f860584dd8bf";
-const GITHUB_CLIENT_SECRET = "ee8931e48f4e4906f9dcef55859aa347abad96ce";
+var GITHUB_CLIENT_ID = "5447a6fe561da1e8b478";
+var GITHUB_CLIENT_SECRET = "f24e1a1fa2b4e796e2093f0440be96317764f6ce";
 var GITHUB_CALLBACK_URL = "http://0.0.0.0:3000/auth/github/callback";
+
 if(process.env.NODE_ENV === 'production') {
-  GITHUB_CALLBACK_URL = "https://hackfeed.liamz.co/auth/github/callback";
+  GITHUB_CLIENT_ID = "ec26c060f860584dd8bf"
+  GITHUB_CLIENT_SECRET = "ee8931e48f4e4906f9dcef55859aa347abad96ce"
+  GITHUB_CALLBACK_URL = "https://whoshacking.liamz.co/auth/github/callback";
 }
 
 passport.use(new MainAuthStrategy({
@@ -107,10 +112,10 @@ router.get('/user', (req, res) => {
   res.send(req.user)
 })
 
-var PASSPORT_STRATEGY_PROVIDER = 'mocked';
+var PASSPORT_STRATEGY_PROVIDER = 'github';
 // if(process.env.NODE_ENV === 'production') {
-if(process.env.NODE_ENV != 'test') {
-  PASSPORT_STRATEGY_PROVIDER = 'github';
+if(process.env.NODE_ENV == 'test') {
+  PASSPORT_STRATEGY_PROVIDER = 'mocked';
 }
 
 router.get('/auth/github', passport.authenticate(PASSPORT_STRATEGY_PROVIDER));
