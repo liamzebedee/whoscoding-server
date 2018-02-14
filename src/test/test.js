@@ -30,17 +30,17 @@ function setupPassportUser(profile) {
 
 let users = [
     {
-        id: 32,
+        id: "32",
         displayName: 'Liam Z',
         emails: [ { value: 'liam@liamz.co' } ]
     },
     {
-        id: 42,
+        id: "42",
         displayName: 'Anonymous Muppet',
         emails: [ { value: 'muppet@google.com' } ]
     },
     {
-        id: 52,
+        id: "52",
         displayName: 'Kaz',
         emails: [ { value: 'kaz@neo.to' } ]
     }

@@ -17,6 +17,7 @@ var LocalStrategy = require('passport-local').Strategy;
 var crypto = require('crypto');
 
 
+
 var GITHUB_CLIENT_ID = "5447a6fe561da1e8b478";
 var GITHUB_CLIENT_SECRET = "f24e1a1fa2b4e796e2093f0440be96317764f6ce";
 var GITHUB_CALLBACK_URL = "http://0.0.0.0:3000/auth/github/callback";

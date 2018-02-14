@@ -3,7 +3,15 @@
 var r = require('rethinkdb');
 var createConnPromise = require('./core/db/connection').createConnPromise;
 
-const PRIVATE_FIELDS = ['clientPassword', 'githubAuth'];
+const PRIVATE_FIELDS = {
+  'clientPassword': true,
+  'githubAuth': true,
+  'profile': {
+    '_json': true,
+    '_raw': true,
+    'emails': true
+  }
+};
 
 module.exports = function(server) {
     // Realtime libs.
@@ -18,7 +26,7 @@ module.exports = function(server) {
       createConnPromise()
       .then(conn => {
         r.table('users')
-        .get(+auth.id) // weird bug where socket-io.client would send this param as a string, not an int, and thus the record would be null
+        .get(auth.id)
         .run(conn, (err, res) => {
           if(!res) return next(new Error("no user found for id "+auth.id))
           if(err) return next(new Error('Database error in authenticating user'));
@@ -37,6 +45,7 @@ module.exports = function(server) {
   
     io.on('connection', function(socket) {
       let userId = socket.request.user.id;
+      console.log('socket', new Date, userId)
       // TODO update user is online
 
       socket.error(err => {
@@ -44,6 +53,8 @@ module.exports = function(server) {
       })
   
       socket.on('current status', (status) => {
+        console.log(userId, 'current status', status)
+
         createConnPromise()
         .then(conn => {
           r.table('users')
@@ -89,11 +100,16 @@ module.exports = function(server) {
       .then(conn => {
         r.table('users')
         .without(PRIVATE_FIELDS)
+        .map(user => {
+          return user.merge({
+            statuses: user('statuses').orderBy(r.desc('time')).limit(1)
+          })
+        })
         .changes()
         .run(conn, (err, cursor) => {
-          cursor.each((err, change) => {
-            if(change.new_val) {
-              socket.emit('status updated', { statusEvent: change.new_val })
+          cursor.each((err, user) => {
+            if(user.new_val) {
+              socket.emit('status updated', { statusEvent: user.new_val })
             }
           })
         })
